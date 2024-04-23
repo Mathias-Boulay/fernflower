@@ -294,11 +294,14 @@ public class ClassWriter {
       }
 
       // Record classes also have accessors, skip them as they are redundant.
+      //TODO this assumes that a record class cannot override a record component method
       for (StructRecordComponent recordComponent : cl.getRecordComponents()) {
 
         if (recordComponent.getName().equals(mt.getName())) {
-          //TODO this assumes that a record class cannot override a record component method
-          if (recordComponent.getDescriptor().equals(mt.getDescriptor().replace("()", ""))) {
+          if (recordComponent.getDescriptor().equals(mt.getDescriptor().replace("()", "")) &&
+            (mt.getAttribute(StructGeneralAttribute.ATTRIBUTE_RUNTIME_VISIBLE_ANNOTATIONS) == null &&
+              mt.getAttribute(StructGeneralAttribute.ATTRIBUTE_RUNTIME_INVISIBLE_ANNOTATIONS) == null)
+          ) {
             return true;
           }
         }
