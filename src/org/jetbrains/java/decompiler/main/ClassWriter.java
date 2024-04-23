@@ -292,6 +292,17 @@ public class ClassWriter {
           return str.startsWith("return this." + name + "<invokedynamic>(this");
         }
       }
+
+      // Record classes also have accessors, skip them as they are redundant.
+      for (StructRecordComponent recordComponent : cl.getRecordComponents()) {
+
+        if (recordComponent.getName().equals(mt.getName())) {
+          //TODO this assumes that a record class cannot override a record component method
+          if (recordComponent.getDescriptor().equals(mt.getDescriptor().replace("()", ""))) {
+            return true;
+          }
+        }
+      }
     }
     return false;
   }
@@ -861,11 +872,22 @@ public class ClassWriter {
             BytecodeMappingTracer codeTracer = new BytecodeMappingTracer(tracer.getCurrentSourceLine());
             TextBuffer code = root.toJava(indent + 1, codeTracer);
 
-            hideMethod = code.length() == 0 &&
-              (clInit || dInit || hideConstructor(node, !typeAnnotations.isEmpty(), init, throwsExceptions, paramCount, flags)) ||
+            boolean isRecord = (cl.getRecordComponents() != null);
+
+            // FIXME Not the best way to handle annotations inside init constructors.
+            // typeAnnotations doesn't seem to encompass the runtime annotations
+            boolean hasAnnotations = (!typeAnnotations.isEmpty() ||
+              (isRecord && (mt.getAttribute(StructGeneralAttribute.ATTRIBUTE_RUNTIME_INVISIBLE_ANNOTATIONS) != null ||
+                mt.getAttribute(StructGeneralAttribute.ATTRIBUTE_RUNTIME_VISIBLE_ANNOTATIONS) != null)));
+
+            hideMethod = (code.length() == 0 || isRecord) &&
+              (clInit || dInit || hideConstructor(node, hasAnnotations, init, throwsExceptions, paramCount, flags)) ||
               isSyntheticRecordMethod(cl, mt, code);
 
-            buffer.append(code);
+            // Record constructors are only explicit for annotations, do not add its content
+            if (!(isRecord && init))
+              buffer.append(code);
+
 
             tracer.setCurrentSourceLine(codeTracer.getCurrentSourceLine());
             tracer.addTracer(codeTracer);
@@ -1080,11 +1102,12 @@ public class ClassWriter {
     int paramCount,
     int methodAccessFlags
   ) {
-    if (!init || hasAnnotation|| throwsExceptions || paramCount > 0 || !DecompilerContext.getOption(IFernflowerPreferences.HIDE_DEFAULT_CONSTRUCTOR)) {
+    StructClass cl = node.getWrapper().getClassStruct();
+    boolean isRecord = cl.getRecordComponents() != null;
+
+    if (!init || hasAnnotation|| throwsExceptions || (paramCount > 0 && !isRecord) || !DecompilerContext.getOption(IFernflowerPreferences.HIDE_DEFAULT_CONSTRUCTOR)) {
       return false;
     }
-
-    StructClass cl = node.getWrapper().getClassStruct();
 
 	  int classAccessFlags = node.type == ClassNode.CLASS_ROOT ? cl.getAccessFlags() : node.access;
     boolean isEnum = cl.hasModifier(CodeConstants.ACC_ENUM) && DecompilerContext.getOption(IFernflowerPreferences.DECOMPILE_ENUM);
