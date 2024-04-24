@@ -292,6 +292,10 @@ public class ClassWriter {
           return str.startsWith("return this." + name + "<invokedynamic>(this");
         }
       }
+
+      // Global setting to disable the removal of redundant record methods
+      if (!DecompilerContext.getOption(IFernflowerPreferences.REMOVE_RECORD_METHODS)) return false;
+
       List<StructRecordComponent> recordComponents = cl.getRecordComponents();
 
       // Record classes can have constructors
@@ -920,7 +924,7 @@ public class ClassWriter {
               isSyntheticRecordMethod(cl, mt, code);
 
             // Record constructors are only explicit for annotations, do not add its content
-            if (!(isRecord && init && isTrivialRecordConstructor(cl, mt, code)))
+            if (!(isRecord && init && isTrivialRecordConstructor(cl, mt, code) && DecompilerContext.getOption(IFernflowerPreferences.REMOVE_RECORD_METHODS)))
               buffer.append(code);
 
             tracer.setCurrentSourceLine(codeTracer.getCurrentSourceLine());

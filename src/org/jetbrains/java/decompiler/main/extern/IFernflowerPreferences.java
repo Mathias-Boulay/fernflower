@@ -10,6 +10,7 @@ import java.util.Map;
 public interface IFernflowerPreferences {
   String REMOVE_BRIDGE = "rbr";
   String REMOVE_SYNTHETIC = "rsy";
+  String REMOVE_RECORD_METHODS = "rrm";
   String DECOMPILE_INNER = "din";
   String DECOMPILE_CLASS_1_4 = "dc4";
   String DECOMPILE_ASSERTIONS = "das";
@@ -58,6 +59,7 @@ public interface IFernflowerPreferences {
 
     defaults.put(REMOVE_BRIDGE, "1");
     defaults.put(REMOVE_SYNTHETIC, "0");
+    defaults.put(REMOVE_RECORD_METHODS, "1");
     defaults.put(DECOMPILE_INNER, "1");
     defaults.put(DECOMPILE_CLASS_1_4, "1");
     defaults.put(DECOMPILE_ASSERTIONS, "1");
