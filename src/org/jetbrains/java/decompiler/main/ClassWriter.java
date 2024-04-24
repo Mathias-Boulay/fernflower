@@ -297,14 +297,15 @@ public class ClassWriter {
       //TODO this assumes that a record class cannot override a record component method
       for (StructRecordComponent recordComponent : cl.getRecordComponents()) {
 
-        if (recordComponent.getName().equals(mt.getName())) {
-          if (recordComponent.getDescriptor().equals(mt.getDescriptor().replace("()", "")) &&
-            (mt.getAttribute(StructGeneralAttribute.ATTRIBUTE_RUNTIME_VISIBLE_ANNOTATIONS) == null &&
-              mt.getAttribute(StructGeneralAttribute.ATTRIBUTE_RUNTIME_INVISIBLE_ANNOTATIONS) == null)
-          ) {
-            return true;
-          }
-        }
+        if (!recordComponent.getName().equals(mt.getName())) continue; // Verify the name
+        if (!recordComponent.getDescriptor().equals(mt.getDescriptor().replace("()", ""))) continue; // Verify the descriptor
+        if (mt.getAttribute(StructGeneralAttribute.ATTRIBUTE_RUNTIME_VISIBLE_ANNOTATIONS) != null ||
+          mt.getAttribute(StructGeneralAttribute.ATTRIBUTE_RUNTIME_INVISIBLE_ANNOTATIONS) != null) continue; // Verify the absence of annotations, as we cannot trivialise them
+
+        // Now detect trivial implementations
+        if (code.countLines() != 1) continue;
+        if (!code.toString().trim().contains("return this." + name + ";")) continue;
+        return true;
       }
     }
     return false;
