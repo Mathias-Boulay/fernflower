@@ -181,6 +181,8 @@ public class SingleClassesTest {
   @Test public void testRecordGenericVararg() { doTest("records/TestRecordGenericVararg"); }
   @Test public void testRecordAnno() { doTest("records/TestRecordAnno"); }
   @Test public void testRecordNonTrivialGetter() { doTest("records/TestRecordNonTrivialGetter"); }
+  @Test public void testRecordNonTrivialPrimaryConstructor() { doTest("records/TestRecordNonTrivialPrimaryConstructor"); }
+  @Test public void testRecordNonTrivialSecondaryConstructor() { doTest("records/TestRecordNonTrivialSecondaryConstructor"); }
   @Test public void testRootWithClassInner() { doTest("sealed/RootWithClassInner"); }
   @Test public void testRootWithInterfaceInner() { doTest("sealed/RootWithInterfaceInner"); }
   @Test public void testRootWithClassOuter() { doTest("sealed/RootWithClassOuter",

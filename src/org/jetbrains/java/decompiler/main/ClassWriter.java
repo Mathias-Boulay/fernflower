@@ -292,10 +292,16 @@ public class ClassWriter {
           return str.startsWith("return this." + name + "<invokedynamic>(this");
         }
       }
+      List<StructRecordComponent> recordComponents = cl.getRecordComponents();
+
+      // Record classes can have constructors
+      if (name.equals(CodeConstants.INIT_NAME) && !mt.hasAnnotations() ) {
+
+        return isTrivialRecordConstructor(cl, mt, code);
+      }
 
       // Record classes also have accessors, skip them as they are redundant.
-      //TODO this assumes that a record class cannot override a record component method
-      for (StructRecordComponent recordComponent : cl.getRecordComponents()) {
+      for (StructRecordComponent recordComponent : recordComponents) {
 
         if (!recordComponent.getName().equals(mt.getName())) continue; // Verify the name
         if (!recordComponent.getDescriptor().equals(mt.getDescriptor().replace("()", ""))) continue; // Verify the descriptor
@@ -308,6 +314,29 @@ public class ClassWriter {
         return true;
       }
     }
+    return false;
+  }
+
+  private static boolean isTrivialRecordConstructor(StructClass cl, StructMethod mt, TextBuffer code){
+    List<StructRecordComponent> recordComponents = cl.getRecordComponents();
+    if (recordComponents == null) return false;
+
+    // Get all the record components descriptors to compare to the constructor descriptor
+    String recordDescriptor = recordComponents.stream().map(StructRecordComponent::getDescriptor).reduce((a, b) -> a + b).orElse("");
+
+    if (
+      ("("+recordDescriptor+")V").equals(mt.getDescriptor())) {
+      // We want to detect trivial implementations
+      if (code.countLines() != recordComponents.size()) return false;
+
+      // Build the trivial code to compare to
+      String trivialCode = recordComponents.stream().map(c -> "this." + c.getName() + "=" + c.getName() + ";\n").reduce((a, b) -> a + b).orElse("");
+      trivialCode = trivialCode.trim();
+      if (!code.toString().trim().replace(" ", "").contains(trivialCode)) return false;
+
+      return true;
+    }
+
     return false;
   }
 
@@ -880,18 +909,19 @@ public class ClassWriter {
 
             // FIXME Not the best way to handle annotations inside init constructors.
             // typeAnnotations doesn't seem to encompass the runtime annotations
+            /*
             boolean hasAnnotations = (!typeAnnotations.isEmpty() ||
               (isRecord && (mt.getAttribute(StructGeneralAttribute.ATTRIBUTE_RUNTIME_INVISIBLE_ANNOTATIONS) != null ||
                 mt.getAttribute(StructGeneralAttribute.ATTRIBUTE_RUNTIME_VISIBLE_ANNOTATIONS) != null)));
+                */
 
             hideMethod = (code.length() == 0 || isRecord) &&
-              (clInit || dInit || hideConstructor(node, hasAnnotations, init, throwsExceptions, paramCount, flags)) ||
+              (clInit || dInit || hideConstructor(node, !typeAnnotations.isEmpty(), init, throwsExceptions, paramCount, flags)) ||
               isSyntheticRecordMethod(cl, mt, code);
 
             // Record constructors are only explicit for annotations, do not add its content
-            if (!(isRecord && init))
+            if (!(isRecord && init && isTrivialRecordConstructor(cl, mt, code)))
               buffer.append(code);
-
 
             tracer.setCurrentSourceLine(codeTracer.getCurrentSourceLine());
             tracer.addTracer(codeTracer);
@@ -1107,9 +1137,8 @@ public class ClassWriter {
     int methodAccessFlags
   ) {
     StructClass cl = node.getWrapper().getClassStruct();
-    boolean isRecord = cl.getRecordComponents() != null;
 
-    if (!init || hasAnnotation|| throwsExceptions || (paramCount > 0 && !isRecord) || !DecompilerContext.getOption(IFernflowerPreferences.HIDE_DEFAULT_CONSTRUCTOR)) {
+    if (!init || hasAnnotation|| throwsExceptions || paramCount > 0 || !DecompilerContext.getOption(IFernflowerPreferences.HIDE_DEFAULT_CONSTRUCTOR)) {
       return false;
     }
 
